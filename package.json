@@ -1,0 +1,25 @@
+{
+  "name": "student-expense-tracker-workspace",
+  "version": "2.0.0",
+  "description": "Full-stack Student Expense Tracker with React, Express, and MongoDB",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "dev:all": "npm run dev --prefix backend & npm run dev --prefix frontend",
+    "server": "npm run dev --prefix backend",
+    "client": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "node backend/server.js",
+    "test:backend": "node backend/test_api.js"
+  },
+  "keywords": [
+    "expense-tracker",
+    "student-budgeting",
+    "react",
+    "express",
+    "mongodb",
+    "vite",
+    "tailwindcss"
+  ],
+  "author": "",
+  "license": "ISC"
+}

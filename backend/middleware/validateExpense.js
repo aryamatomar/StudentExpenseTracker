@@ -6,30 +6,37 @@ const { CATEGORIES } = require('../models/Expense');
 
 const validateExpense = (req, res, next) => {
   const { title, amount, category, date, description } = req.body;
+  const isPost = req.method === 'POST';
   const errors = [];
 
   // Validate Title
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    errors.push('Expense title is required and cannot be empty.');
-  } else if (title.trim().length > 100) {
-    errors.push('Expense title must be under 100 characters.');
+  if (isPost || title !== undefined) {
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      errors.push('Expense title is required and cannot be empty.');
+    } else if (title.trim().length > 100) {
+      errors.push('Expense title must be under 100 characters.');
+    }
   }
 
   // Validate Amount
-  if (amount === undefined || amount === null || amount === '') {
-    errors.push('Expense amount is required.');
-  } else {
-    const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      errors.push('Expense amount must be a positive number greater than 0.');
+  if (isPost || amount !== undefined) {
+    if (amount === undefined || amount === null || amount === '') {
+      errors.push('Expense amount is required.');
+    } else {
+      const numAmount = Number(amount);
+      if (isNaN(numAmount) || numAmount <= 0) {
+        errors.push('Expense amount must be a positive number greater than 0.');
+      }
     }
   }
 
   // Validate Category
-  if (!category) {
-    errors.push('Expense category is required.');
-  } else if (!CATEGORIES.includes(category)) {
-    errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}.`);
+  if (isPost || category !== undefined) {
+    if (!category) {
+      errors.push('Expense category is required.');
+    } else if (!CATEGORIES.includes(category)) {
+      errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}.`);
+    }
   }
 
   // Validate Date if provided

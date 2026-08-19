@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Target, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle2, 
-  Lightbulb, 
-  Edit, 
-  Save, 
-  DollarSign,
+import {
+  Target,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  Lightbulb,
+  Edit,
+  Save,
   PieChart as PieIcon,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import { useExpenses } from '../hooks/useExpenses';
 import { formatCurrency, getCategoryConfig } from '../utils/formatters';
@@ -17,7 +17,7 @@ import CategoryChart from '../components/dashboard/CategoryChart';
 import MonthlyBarChart from '../components/dashboard/MonthlyBarChart';
 
 export const AnalyticsPage = () => {
-  const { stats, monthlyBudget, updateMonthlyBudget } = useExpenses();
+  const { stats, monthlyBudget, updateMonthlyBudget, currency, profile } = useExpenses();
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [budgetInput, setBudgetInput] = useState(monthlyBudget.toString());
 
@@ -41,23 +41,23 @@ export const AnalyticsPage = () => {
 
   const studentTips = [
     {
-      title: 'Buy Used Textbooks or Rent Digital Copies',
-      description: 'Check library reserves, Chegg, or campus swap groups before buying new bookstore copies.',
+      title: 'Buy Used Textbooks or Borrow from Seniors',
+      description: 'Check campus book swap groups, senior student networks, or library reserves before buying new copies.',
       category: 'Education'
     },
     {
-      title: 'Meal Prep & Cook in Bulk',
-      description: 'Eating campus takeout twice daily can cost upwards of $400/month. Cooking basics saves 60%.',
+      title: 'Cook in Hostel / Mess Planning',
+      description: 'Outside food delivery twice daily can cost over ₹5,000/month. Combining mess meals with smart snacks saves up to 60%.',
       category: 'Food'
     },
     {
-      title: 'Use Student ID for Discounts',
-      description: 'Spotify, Apple Music, Adobe, public transit, and movie theaters offer 50%+ discounts for students.',
+      title: 'Avail Student Discounts & Concessions',
+      description: 'Spotify, Apple Student, GitHub Student Pack, transit passes, and software suites offer major student discounts.',
       category: 'Entertainment'
     },
     {
-      title: 'Transit Semester Passes',
-      description: 'Most university IDs double as unlimited city bus or subway passes at a fraction of the standard rate.',
+      title: 'Monthly Student Metro / Bus Pass',
+      description: 'Opt for monthly smart card transit passes for unlimited bus and metro rides at huge concessions.',
       category: 'Transport'
     }
   ];
@@ -65,13 +65,20 @@ export const AnalyticsPage = () => {
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-          Analytics & Budget Planner
-        </h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Plan your monthly student budget, track limits, and analyze your financial habits
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            Analytics & Budget Planner
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Plan your monthly student budget, track limits, and analyze your financial habits
+          </p>
+        </div>
+        {profile && (
+          <span className="self-start sm:self-auto text-xs font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl">
+            {profile.studentId}
+          </span>
+        )}
       </div>
 
       {/* Monthly Budget Tracker Card */}
@@ -83,7 +90,7 @@ export const AnalyticsPage = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Monthly Spending Budget</h2>
-              <p className="text-xs text-slate-500">Set a spending target to keep your student expenses on track</p>
+              <p className="text-xs text-slate-500">Set a spending target in INR (₹) to keep your student expenses on track</p>
             </div>
           </div>
 
@@ -92,14 +99,16 @@ export const AnalyticsPage = () => {
             {isEditingBudget ? (
               <form onSubmit={handleSaveBudget} className="flex items-center gap-2">
                 <div className="relative">
-                  <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <span className="text-sm font-bold text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 select-none">
+                    ₹
+                  </span>
                   <input
                     type="number"
                     min="1"
-                    step="1"
+                    step="100"
                     value={budgetInput}
                     onChange={(e) => setBudgetInput(e.target.value)}
-                    className="w-32 pl-8 pr-3 py-2 bg-slate-50 border border-brand-500 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    className="w-36 pl-8 pr-3 py-2 bg-slate-50 border border-brand-500 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                     autoFocus
                   />
                 </div>
@@ -124,7 +133,7 @@ export const AnalyticsPage = () => {
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-xs font-semibold text-slate-400">Monthly Target</p>
-                  <p className="text-xl font-extrabold text-slate-900">{formatCurrency(monthlyBudget)}</p>
+                  <p className="text-xl font-extrabold text-slate-900">{formatCurrency(monthlyBudget, 'INR')}</p>
                 </div>
                 <button
                   onClick={() => setIsEditingBudget(true)}
@@ -142,7 +151,7 @@ export const AnalyticsPage = () => {
         <div className="py-6 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-slate-700">
-              Spent {formatCurrency(thisMonthSpending)} of {formatCurrency(monthlyBudget)}
+              Spent {formatCurrency(thisMonthSpending, 'INR')} of {formatCurrency(monthlyBudget, 'INR')}
             </span>
             <span
               className={`font-extrabold text-sm ${
@@ -167,22 +176,22 @@ export const AnalyticsPage = () => {
           </div>
 
           {/* Status Note */}
-          <div className="flex items-center justify-between pt-1 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-1 text-xs gap-2">
             {isOverBudget ? (
               <div className="flex items-center gap-1.5 text-rose-600 font-semibold">
-                <AlertCircle className="w-4 h-4" />
-                <span>You are {formatCurrency(thisMonthSpending - monthlyBudget)} over your monthly limit!</span>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>You are {formatCurrency(thisMonthSpending - monthlyBudget, 'INR')} over your monthly limit!</span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{formatCurrency(remainingBudget)} remaining for the next {daysRemaining} days.</span>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{formatCurrency(remainingBudget, 'INR')} remaining for the next {daysRemaining} days.</span>
               </div>
             )}
 
             {!isOverBudget && (
               <span className="text-slate-500 font-medium">
-                Safe Daily Pace: <strong className="text-slate-800">{formatCurrency(dailyAllowance)}/day</strong>
+                Safe Daily Pace: <strong className="text-slate-800">{formatCurrency(dailyAllowance, 'INR')}/day</strong>
               </span>
             )}
           </div>
@@ -213,7 +222,7 @@ export const AnalyticsPage = () => {
                     <span className="text-xs text-slate-400">({config.description})</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-extrabold text-slate-900 text-sm">{formatCurrency(cat.amount)}</span>
+                    <span className="font-extrabold text-slate-900 text-sm">{formatCurrency(cat.amount, 'INR')}</span>
                     <span className="text-xs text-slate-400 ml-1.5 font-semibold">({cat.percentage}%)</span>
                   </div>
                 </div>
@@ -236,8 +245,8 @@ export const AnalyticsPage = () => {
             <Lightbulb className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Student Budgeting Tips</h3>
-            <p className="text-xs text-slate-500">Practical advice to stretch your college budget further</p>
+            <h3 className="text-base font-bold text-slate-900">Student Budgeting Tips (India)</h3>
+            <p className="text-xs text-slate-500">Practical advice to stretch your college budget further in INR (₹)</p>
           </div>
         </div>
 

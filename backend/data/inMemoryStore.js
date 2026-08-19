@@ -1,26 +1,143 @@
 /**
- * In-Memory Data Store for Expenses
+ * In-Memory Data Store for Expenses and Student Profile (in Indian Rupees INR ₹)
  *
- * Provides full CRUD operations, filtering, search, sorting, and dashboard statistical calculations.
- * Behaves identically to a MongoDB collection so the frontend works seamlessly.
+ * Provides full CRUD operations, filtering, search, sorting, dashboard statistical calculations,
+ * and profile management.
+ * Behaves identically to MongoDB collections so the app works seamlessly both with and without MongoDB Atlas.
  */
 
 const initialExpenses = require('./initialExpenses');
 
-// Generate unique ID
+// Generate unique Expense ID
 const generateId = () => {
   return 'exp_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 };
 
-// Internal mutable storage array
+// Generate unique Student ID: STU-YYYY-XXXX
+const generateStudentId = () => {
+  const year = new Date().getFullYear();
+  const randomCode = Math.floor(1000 + Math.random() * 9000);
+  return `STU-${year}-${randomCode}`;
+};
+
+// Default initial student profile (can be customized/overwritten)
+const defaultProfile = {
+  _id: 'prof_001',
+  studentId: 'STU-2026-0001',
+  name: 'Aryama Singh',
+  email: 'aryama.singh@university.edu.in',
+  phone: '+91 98765 43210',
+  college: 'National Institute of Technology',
+  course: 'B.Tech Computer Science & Engineering',
+  semester: '6th Semester (Year 3)',
+  monthlyBudget: 15000,
+  profilePicture: '',
+  currency: 'INR',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
+// Internal mutable storage arrays
 let expensesStore = JSON.parse(JSON.stringify(initialExpenses));
+let activeProfileStore = JSON.parse(JSON.stringify(defaultProfile));
 
 const inMemoryStore = {
+  // ==========================================
+  // PROFILE OPERATIONS
+  // ==========================================
+
+  /**
+   * Get current active profile (or by studentId)
+   */
+  getProfile: (studentId) => {
+    if (!activeProfileStore) return null;
+    if (studentId && activeProfileStore.studentId !== studentId) {
+      return null;
+    }
+    return activeProfileStore;
+  },
+
+  /**
+   * Create a new student profile
+   */
+  createProfile: (data) => {
+    const studentId = data.studentId || generateStudentId();
+    const now = new Date().toISOString();
+
+    activeProfileStore = {
+      _id: 'prof_' + Date.now().toString(36),
+      studentId: studentId.toUpperCase(),
+      name: (data.name || '').trim(),
+      email: (data.email || '').trim().toLowerCase(),
+      phone: (data.phone || '').trim(),
+      college: (data.college || '').trim(),
+      course: (data.course || '').trim(),
+      semester: (data.semester || 'Semester 1').trim(),
+      monthlyBudget: data.monthlyBudget !== undefined ? Math.max(0, Number(data.monthlyBudget)) : 15000,
+      profilePicture: data.profilePicture || '',
+      currency: data.currency || 'INR',
+      createdAt: now,
+      updatedAt: now
+    };
+
+    return activeProfileStore;
+  },
+
+  /**
+   * Update existing profile
+   */
+  updateProfile: (studentId, updateData) => {
+    if (!activeProfileStore) return null;
+    if (studentId && activeProfileStore.studentId !== studentId) {
+      return null;
+    }
+
+    activeProfileStore = {
+      ...activeProfileStore,
+      ...(updateData.name !== undefined && { name: updateData.name.trim() }),
+      ...(updateData.email !== undefined && { email: updateData.email.trim().toLowerCase() }),
+      ...(updateData.phone !== undefined && { phone: updateData.phone.trim() }),
+      ...(updateData.college !== undefined && { college: updateData.college.trim() }),
+      ...(updateData.course !== undefined && { course: updateData.course.trim() }),
+      ...(updateData.semester !== undefined && { semester: updateData.semester.trim() }),
+      ...(updateData.monthlyBudget !== undefined && {
+        monthlyBudget: Math.max(0, Number(updateData.monthlyBudget))
+      }),
+      ...(updateData.profilePicture !== undefined && { profilePicture: updateData.profilePicture }),
+      ...(updateData.currency !== undefined && { currency: updateData.currency }),
+      updatedAt: new Date().toISOString()
+    };
+
+    return activeProfileStore;
+  },
+
+  /**
+   * Delete profile
+   */
+  deleteProfile: (studentId) => {
+    if (!activeProfileStore) return null;
+    if (studentId && activeProfileStore.studentId !== studentId) {
+      return null;
+    }
+    const deleted = { ...activeProfileStore };
+    activeProfileStore = null;
+    return deleted;
+  },
+
+  // ==========================================
+  // EXPENSE OPERATIONS
+  // ==========================================
+
   /**
    * Find all expenses with optional filters and sorting
    */
-  findAll: ({ search, category, startDate, endDate, sortBy = 'date', order = 'desc' } = {}) => {
+  findAll: ({ search, category, startDate, endDate, studentId, sortBy = 'date', order = 'desc' } = {}) => {
     let result = [...expensesStore];
+
+    // Filter by studentId if provided
+    if (studentId) {
+      result = result.filter(exp => !exp.studentId || exp.studentId === studentId);
+    }
 
     // Search by title or description
     if (search && search.trim()) {
@@ -49,7 +166,6 @@ const inMemoryStore = {
     if (endDate) {
       const end = new Date(endDate);
       if (!isNaN(end.getTime())) {
-        // Set end to end of that day
         end.setHours(23, 59, 59, 999);
         result = result.filter(exp => new Date(exp.date) <= end);
       }
@@ -100,6 +216,7 @@ const inMemoryStore = {
       category: data.category,
       date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       description: data.description ? data.description.trim() : '',
+      studentId: data.studentId || (activeProfileStore ? activeProfileStore.studentId : null),
       createdAt: now,
       updatedAt: now
     };
@@ -126,6 +243,7 @@ const inMemoryStore = {
         date: new Date(updateData.date).toISOString().split('T')[0]
       }),
       ...(updateData.description !== undefined && { description: updateData.description.trim() }),
+      ...(updateData.studentId !== undefined && { studentId: updateData.studentId }),
       updatedAt: new Date().toISOString()
     };
 
@@ -147,13 +265,20 @@ const inMemoryStore = {
   /**
    * Calculate comprehensive statistics for Dashboard & Analytics
    */
-  getStats: () => {
+  getStats: (studentId) => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0-indexed
+    const todayStr = now.toISOString().split('T')[0];
+
+    let targetExpenses = expensesStore;
+    if (studentId) {
+      targetExpenses = expensesStore.filter(exp => !exp.studentId || exp.studentId === studentId);
+    }
 
     let totalAmount = 0;
     let thisMonthAmount = 0;
+    let todayAmount = 0;
     let highestExpense = null;
     const categoryTotals = {
       Food: 0,
@@ -161,6 +286,8 @@ const inMemoryStore = {
       Education: 0,
       Shopping: 0,
       Entertainment: 0,
+      Bills: 0,
+      Health: 0,
       Other: 0
     };
 
@@ -172,7 +299,7 @@ const inMemoryStore = {
       monthlyMap[key] = { month: key, amount: 0, count: 0 };
     }
 
-    expensesStore.forEach(exp => {
+    targetExpenses.forEach(exp => {
       const amt = Number(exp.amount) || 0;
       totalAmount += amt;
 
@@ -188,21 +315,23 @@ const inMemoryStore = {
         categoryTotals['Other'] += amt;
       }
 
-      // Check if expense is in current month
+      // Check date
       const expDate = new Date(exp.date);
-      if (
-        !isNaN(expDate.getTime()) &&
-        expDate.getFullYear() === currentYear &&
-        expDate.getMonth() === currentMonth
-      ) {
-        thisMonthAmount += amt;
-      }
+      if (!isNaN(expDate.getTime())) {
+        const expDateStr = expDate.toISOString().split('T')[0];
+        if (expDateStr === todayStr) {
+          todayAmount += amt;
+        }
 
-      // Add to monthly trends if within range
-      const expMonthKey = expDate.toLocaleString('default', { month: 'short', year: '2-digit' });
-      if (monthlyMap[expMonthKey]) {
-        monthlyMap[expMonthKey].amount += amt;
-        monthlyMap[expMonthKey].count += 1;
+        if (expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth) {
+          thisMonthAmount += amt;
+        }
+
+        const expMonthKey = expDate.toLocaleString('default', { month: 'short', year: '2-digit' });
+        if (monthlyMap[expMonthKey]) {
+          monthlyMap[expMonthKey].amount += amt;
+          monthlyMap[expMonthKey].count += 1;
+        }
       }
     });
 
@@ -222,8 +351,9 @@ const inMemoryStore = {
 
     return {
       totalExpenses: parseFloat(totalAmount.toFixed(2)),
-      totalCount: expensesStore.length,
+      totalCount: targetExpenses.length,
       thisMonthSpending: parseFloat(thisMonthAmount.toFixed(2)),
+      todaySpending: parseFloat(todayAmount.toFixed(2)),
       highestExpense: highestExpense
         ? {
             ...highestExpense,
@@ -231,7 +361,7 @@ const inMemoryStore = {
           }
         : null,
       averageExpense:
-        expensesStore.length > 0 ? parseFloat((totalAmount / expensesStore.length).toFixed(2)) : 0,
+        targetExpenses.length > 0 ? parseFloat((totalAmount / targetExpenses.length).toFixed(2)) : 0,
       categoryBreakdown,
       monthlyTrends: Object.values(monthlyMap)
     };
@@ -242,7 +372,8 @@ const inMemoryStore = {
    */
   reset: () => {
     expensesStore = JSON.parse(JSON.stringify(initialExpenses));
-    return expensesStore;
+    activeProfileStore = JSON.parse(JSON.stringify(defaultProfile));
+    return { expenses: expensesStore, profile: activeProfileStore };
   }
 };
 

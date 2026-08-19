@@ -6,8 +6,8 @@ import { formatCurrency, formatRelativeDate } from '../../utils/formatters';
 import { useExpenses } from '../../hooks/useExpenses';
 
 export const RecentExpenses = ({ expenses = [] }) => {
-  const { openEditModal, openDeleteModal } = useExpenses();
-  const recentList = expenses.slice(0, 5);
+  const { openEditModal, openDeleteModal, currency } = useExpenses();
+  const recentList = expenses.slice(0, 6);
 
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-soft">
@@ -53,7 +53,7 @@ export const RecentExpenses = ({ expenses = [] }) => {
 
               <div className="flex items-center gap-3 shrink-0">
                 <span className="text-sm font-bold text-slate-900">
-                  {formatCurrency(expense.amount)}
+                  {formatCurrency(expense.amount, currency)}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button

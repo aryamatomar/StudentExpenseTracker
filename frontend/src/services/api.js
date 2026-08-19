@@ -5,7 +5,7 @@
 import axios from 'axios';
 
 // Create configured Axios instance
-// In Vite dev mode, '/api' is proxied to 'http://localhost:5000/api'
+// In Vite dev mode, '/api' is proxied or points to 'http://localhost:5000/api'
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
@@ -42,8 +42,10 @@ export const expenseService = {
   /**
    * Fetch dashboard statistics calculations
    */
-  getStats: async () => {
-    const response = await API.get('/expenses/stats');
+  getStats: async (studentId) => {
+    const response = await API.get('/expenses/stats', {
+      params: studentId ? { studentId } : {}
+    });
     return response.data;
   },
 
@@ -84,6 +86,41 @@ export const expenseService = {
    */
   checkHealth: async () => {
     const response = await API.get('/health');
+    return response.data;
+  }
+};
+
+export const profileService = {
+  /**
+   * Fetch active student profile or by studentId
+   */
+  get: async (studentId) => {
+    const endpoint = studentId ? `/profile/${studentId}` : '/profile';
+    const response = await API.get(endpoint);
+    return response.data;
+  },
+
+  /**
+   * Create or initialize student profile
+   */
+  create: async (profileData) => {
+    const response = await API.post('/profile', profileData);
+    return response.data;
+  },
+
+  /**
+   * Update student profile
+   */
+  update: async (studentId, profileData) => {
+    const response = await API.put(`/profile/${studentId}`, profileData);
+    return response.data;
+  },
+
+  /**
+   * Delete student profile
+   */
+  delete: async (studentId) => {
+    const response = await API.delete(`/profile/${studentId}`);
     return response.data;
   }
 };

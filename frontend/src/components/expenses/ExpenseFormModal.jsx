@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, Tag, FileText, Loader2, Sparkles } from 'lucide-react';
-import { CATEGORIES } from '../../utils/constants';
+import { X, Calendar, Tag, FileText, Loader2, Sparkles, Check } from 'lucide-react';
+import { CATEGORIES, CATEGORY_CONFIG } from '../../utils/constants';
 import { formatDateForInput } from '../../utils/formatters';
 import { useExpenses } from '../../hooks/useExpenses';
-import { CategoryBadge } from '../ui/Badge';
 
 export const ExpenseFormModal = () => {
   const {
@@ -12,7 +11,8 @@ export const ExpenseFormModal = () => {
     editingExpense,
     setEditingExpense,
     addExpense,
-    updateExpense
+    updateExpense,
+    currency
   } = useExpenses();
 
   const isEditing = Boolean(editingExpense);
@@ -84,7 +84,7 @@ export const ExpenseFormModal = () => {
     } else {
       const num = Number(formData.amount);
       if (isNaN(num) || num <= 0) {
-        newErrors.amount = 'Please enter a valid amount greater than 0';
+        newErrors.amount = 'Please enter a valid amount in INR greater than 0';
       }
     }
 
@@ -111,6 +111,17 @@ export const ExpenseFormModal = () => {
     // Clear specific error on change
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const handleQuickDate = (type) => {
+    const today = new Date();
+    if (type === 'yesterday') {
+      today.setDate(today.getDate() - 1);
+    }
+    setFormData((prev) => ({ ...prev, date: formatDateForInput(today) }));
+    if (errors.date) {
+      setErrors((prev) => ({ ...prev, date: null }));
     }
   };
 
@@ -149,7 +160,7 @@ export const ExpenseFormModal = () => {
             </h3>
             <p className="text-xs text-slate-500">
               {isEditing
-                ? 'Update the details for this transaction'
+                ? 'Update transaction details'
                 : 'Enter your student expenditure details'}
             </p>
           </div>
@@ -174,7 +185,7 @@ export const ExpenseFormModal = () => {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              placeholder="e.g. Physics Textbook, Subway Pass, Groceries"
+              placeholder="e.g. Semester Textbooks, Metro Card, Canteen Lunch"
               className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
                 errors.title
                   ? 'border-rose-400 focus:ring-rose-500/20'
@@ -184,23 +195,25 @@ export const ExpenseFormModal = () => {
             {errors.title && <p className="text-xs text-rose-500 mt-1">{errors.title}</p>}
           </div>
 
-          {/* Amount & Date Fields (2 cols) */}
+          {/* Amount & Date Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Amount */}
+            {/* Amount (₹ INR) */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Amount ($ USD) <span className="text-rose-500">*</span>
+                Amount (₹) <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <span className="text-sm font-extrabold text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 select-none">
+                  ₹
+                </span>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0.01"
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
-                  placeholder="0.00"
+                  placeholder="e.g. 1500"
                   className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${
                     errors.amount
                       ? 'border-rose-400 focus:ring-rose-500/20'
@@ -213,34 +226,51 @@ export const ExpenseFormModal = () => {
 
             {/* Date */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Date <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all ${
-                    errors.date
-                      ? 'border-rose-400 focus:ring-rose-500/20'
-                      : 'border-slate-200 focus:ring-brand-500/20 focus:border-brand-500'
-                  }`}
-                />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Date <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('today')}
+                    className="text-[10px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate('yesterday')}
+                    className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded"
+                  >
+                    Yesterday
+                  </button>
+                </div>
               </div>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 transition-all ${
+                  errors.date
+                    ? 'border-rose-400 focus:ring-rose-500/20'
+                    : 'border-slate-200 focus:ring-brand-500/20 focus:border-brand-500'
+                }`}
+              />
               {errors.date && <p className="text-xs text-rose-500 mt-1">{errors.date}</p>}
             </div>
           </div>
 
-          {/* Category Selection */}
+          {/* Category Selection Grid (8 categories) */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Category <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {CATEGORIES.map((cat) => {
                 const isSelected = formData.category === cat;
+                const config = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG['Other'];
                 return (
                   <button
                     key={cat}
@@ -249,13 +279,17 @@ export const ExpenseFormModal = () => {
                       setFormData((prev) => ({ ...prev, category: cat }));
                       if (errors.category) setErrors((prev) => ({ ...prev, category: null }));
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center transition-all ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border flex items-center justify-between transition-all ${
                       isSelected
                         ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-sm ring-2 ring-brand-500/20'
                         : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    {cat}
+                    <span className="truncate">{cat}</span>
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0 ml-1.5"
+                      style={{ backgroundColor: config.color }}
+                    />
                   </button>
                 );
               })}
@@ -270,10 +304,10 @@ export const ExpenseFormModal = () => {
             </label>
             <textarea
               name="description"
-              rows={3}
+              rows={2}
               value={formData.description}
               onChange={handleChange}
-              placeholder="e.g. Bought with student discount at campus store..."
+              placeholder="e.g. Paid via UPI with student concession..."
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none"
             />
             {errors.description && (
@@ -301,7 +335,7 @@ export const ExpenseFormModal = () => {
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>{isEditing ? 'Save Changes' : 'Add Expense'}</span>
+                <span>{isEditing ? 'Save Changes' : 'Record Expense'}</span>
               )}
             </button>
           </div>

@@ -5,6 +5,8 @@ import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import ExpenseFormModal from './components/expenses/ExpenseFormModal';
 import DeleteConfirmModal from './components/expenses/DeleteConfirmModal';
+import ProfileModal from './components/profile/ProfileModal';
+import SettingsModal from './components/settings/SettingsModal';
 import ToastContainer from './components/ui/Toast';
 
 // Pages
@@ -17,7 +19,7 @@ function AppContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex font-sans antialiased text-slate-800 selection:bg-brand-500 selection:text-white">
       {/* Sidebar Navigation */}
       <Sidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
@@ -40,6 +42,8 @@ function AppContent() {
       {/* Global Modals & Notifications */}
       <ExpenseFormModal />
       <DeleteConfirmModal />
+      <ProfileModal />
+      <SettingsModal />
       <ToastContainer />
     </div>
   );

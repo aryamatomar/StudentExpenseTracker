@@ -1,7 +1,7 @@
 /**
  * Student Expense Tracker - Backend Server
  *
- * Technologies: Node.js, Express.js, REST API architecture
+ * Technologies: Node.js, Express.js, MongoDB Atlas (Mongoose), REST API architecture
  */
 
 const path = require('path');
@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const expenseRoutes = require('./routes/expenseRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -20,7 +21,7 @@ connectDB();
 
 // Core Middlewares
 app.use(cors({
-  origin: '*', // Allows requests from any origin during development (e.g. Vite on port 5173)
+  origin: '*', // Allows requests from any origin during development & Vercel deployment
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -43,8 +44,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount Expense Routes
+// Mount Routes
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Catch-all route for unhandled endpoints
 app.use('*', (req, res) => {
@@ -61,7 +63,8 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log('====================================================');
   console.log(`🚀 Expense Tracker Backend Server running on port ${PORT}`);
-  console.log(`📍 API Base URL: http://localhost:${PORT}/api/expenses`);
+  console.log(`📍 Expenses API: http://localhost:${PORT}/api/expenses`);
+  console.log(`👤 Profile API: http://localhost:${PORT}/api/profile`);
   console.log(`🩺 Health Check: http://localhost:${PORT}/api/health`);
   console.log('====================================================');
 });

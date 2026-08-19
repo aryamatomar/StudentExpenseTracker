@@ -16,17 +16,21 @@ const isMongoConnected = () => {
 };
 
 /**
- * @desc   Get all expenses (with search, category filter, date filtering, and sorting)
+ * @desc   Get all expenses (with search, category filter, date filtering, studentId, and sorting)
  * @route  GET /api/expenses
  * @access Public
  */
 const getExpenses = async (req, res, next) => {
   try {
-    const { search, category, startDate, endDate, sortBy = 'date', order = 'desc' } = req.query;
+    const { search, category, startDate, endDate, studentId, sortBy = 'date', order = 'desc' } = req.query;
 
     if (isMongoConnected()) {
       // MongoDB / Mongoose Query
       const query = {};
+
+      if (studentId) {
+        query.$or = [{ studentId: studentId.toUpperCase() }, { studentId: null }];
+      }
 
       if (search && search.trim()) {
         const regex = new RegExp(search.trim(), 'i');
@@ -63,6 +67,7 @@ const getExpenses = async (req, res, next) => {
         category,
         startDate,
         endDate,
+        studentId,
         sortBy,
         order
       });
@@ -85,21 +90,36 @@ const getExpenses = async (req, res, next) => {
  */
 const getExpenseStats = async (req, res, next) => {
   try {
+    const { studentId } = req.query;
+
     if (isMongoConnected()) {
-      const expenses = await Expense.find();
-      // Use in-memory calculation logic on fetched documents
-      const tempStore = require('../data/inMemoryStore');
-      // For MongoDB, we can compute stats using aggregation or helper
+      const query = {};
+      if (studentId) {
+        query.$or = [{ studentId: studentId.toUpperCase() }, { studentId: null }];
+      }
+
+      const expenses = await Expense.find(query);
       const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
       const totalCount = expenses.length;
       
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
+      const todayStr = now.toISOString().split('T')[0];
 
       let thisMonthAmount = 0;
+      let todayAmount = 0;
       let highestExpense = null;
-      const categoryTotals = { Food: 0, Transport: 0, Education: 0, Shopping: 0, Entertainment: 0, Other: 0 };
+      const categoryTotals = {
+        Food: 0,
+        Transport: 0,
+        Education: 0,
+        Shopping: 0,
+        Entertainment: 0,
+        Bills: 0,
+        Health: 0,
+        Other: 0
+      };
 
       // Monthly trend tracking (past 6 months)
       const monthlyMap = {};
@@ -119,14 +139,22 @@ const getExpenseStats = async (req, res, next) => {
         } else {
           categoryTotals['Other'] += amt;
         }
+
         const expDate = new Date(exp.date);
-        if (expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth) {
-          thisMonthAmount += amt;
-        }
-        const expMonthKey = expDate.toLocaleString('default', { month: 'short', year: '2-digit' });
-        if (monthlyMap[expMonthKey]) {
-          monthlyMap[expMonthKey].amount += amt;
-          monthlyMap[expMonthKey].count += 1;
+        if (!isNaN(expDate.getTime())) {
+          const expDateStr = expDate.toISOString().split('T')[0];
+          if (expDateStr === todayStr) {
+            todayAmount += amt;
+          }
+
+          if (expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth) {
+            thisMonthAmount += amt;
+          }
+          const expMonthKey = expDate.toLocaleString('default', { month: 'short', year: '2-digit' });
+          if (monthlyMap[expMonthKey]) {
+            monthlyMap[expMonthKey].amount += amt;
+            monthlyMap[expMonthKey].count += 1;
+          }
         }
       });
 
@@ -142,6 +170,7 @@ const getExpenseStats = async (req, res, next) => {
           totalExpenses: parseFloat(totalAmount.toFixed(2)),
           totalCount,
           thisMonthSpending: parseFloat(thisMonthAmount.toFixed(2)),
+          todaySpending: parseFloat(todayAmount.toFixed(2)),
           highestExpense,
           averageExpense: totalCount > 0 ? parseFloat((totalAmount / totalCount).toFixed(2)) : 0,
           categoryBreakdown,
@@ -149,7 +178,7 @@ const getExpenseStats = async (req, res, next) => {
         }
       });
     } else {
-      const stats = inMemoryStore.getStats();
+      const stats = inMemoryStore.getStats(studentId);
       return res.status(200).json({
         success: true,
         data: stats
@@ -206,7 +235,7 @@ const getExpenseById = async (req, res, next) => {
  */
 const createExpense = async (req, res, next) => {
   try {
-    const { title, amount, category, date, description } = req.body;
+    const { title, amount, category, date, description, studentId } = req.body;
 
     if (isMongoConnected()) {
       const newExpense = await Expense.create({
@@ -214,7 +243,8 @@ const createExpense = async (req, res, next) => {
         amount,
         category,
         date: date || Date.now(),
-        description
+        description,
+        studentId: studentId ? studentId.toUpperCase() : null
       });
       return res.status(201).json({
         success: true,
@@ -227,7 +257,8 @@ const createExpense = async (req, res, next) => {
         amount,
         category,
         date,
-        description
+        description,
+        studentId: studentId ? studentId.toUpperCase() : null
       });
       return res.status(201).json({
         success: true,
@@ -248,12 +279,17 @@ const createExpense = async (req, res, next) => {
 const updateExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, amount, category, date, description } = req.body;
+    const { title, amount, category, date, description, studentId } = req.body;
 
     if (isMongoConnected()) {
+      const updateData = { title, amount, category, date, description };
+      if (studentId !== undefined) {
+        updateData.studentId = studentId ? studentId.toUpperCase() : null;
+      }
+
       const updated = await Expense.findByIdAndUpdate(
         id,
-        { title, amount, category, date, description },
+        updateData,
         { new: true, runValidators: true }
       );
       if (!updated) {
@@ -273,7 +309,8 @@ const updateExpense = async (req, res, next) => {
         amount,
         category,
         date,
-        description
+        description,
+        studentId: studentId ? studentId.toUpperCase() : undefined
       });
       if (!updated) {
         return res.status(404).json({

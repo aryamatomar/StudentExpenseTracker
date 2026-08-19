@@ -8,9 +8,10 @@ import {
 } from 'recharts';
 import { CATEGORY_CONFIG } from '../../utils/constants';
 import { formatCurrency } from '../../utils/formatters';
+import { useExpenses } from '../../hooks/useExpenses';
 import { PieChart as PieIcon } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload }) => {
+const CustomTooltip = ({ active, payload, currency }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const config = CATEGORY_CONFIG[data.name] || CATEGORY_CONFIG['Other'];
@@ -20,7 +21,7 @@ const CustomTooltip = ({ active, payload }) => {
           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
           <span className="font-bold">{data.name}</span>
         </div>
-        <p className="text-slate-300 font-semibold">{formatCurrency(data.value)} ({data.percentage}%)</p>
+        <p className="text-slate-300 font-semibold">{formatCurrency(data.value, currency)} ({data.percentage}%)</p>
       </div>
     );
   }
@@ -28,6 +29,8 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 export const CategoryChart = ({ breakdown = [], totalExpenses = 0 }) => {
+  const { currency } = useExpenses();
+
   // Filter categories with amounts > 0
   const chartData = breakdown
     .filter((item) => item.amount > 0)
@@ -81,13 +84,13 @@ export const CategoryChart = ({ breakdown = [], totalExpenses = 0 }) => {
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip currency={currency} />} />
           </PieChart>
         </ResponsiveContainer>
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total</span>
-          <span className="text-sm font-extrabold text-slate-800">{formatCurrency(totalExpenses)}</span>
+          <span className="text-sm font-extrabold text-slate-800">{formatCurrency(totalExpenses, currency)}</span>
         </div>
       </div>
 
@@ -101,7 +104,7 @@ export const CategoryChart = ({ breakdown = [], totalExpenses = 0 }) => {
             />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-slate-700 truncate">{item.name}</p>
-              <p className="text-[10px] text-slate-500 font-medium">{item.percentage}% ({formatCurrency(item.value)})</p>
+              <p className="text-[10px] text-slate-500 font-medium">{item.percentage}% ({formatCurrency(item.value, currency)})</p>
             </div>
           </div>
         ))}

@@ -8,6 +8,7 @@
  * - category: Pre-defined student expense category (required)
  * - date: Date of expense (required, defaults to current date)
  * - description: Optional additional notes or details
+ * - studentId: Optional Student ID associating expense with a student profile
  */
 
 const mongoose = require('mongoose');
@@ -18,6 +19,8 @@ const CATEGORIES = [
   'Education',
   'Shopping',
   'Entertainment',
+  'Bills',
+  'Health',
   'Other'
 ];
 
@@ -52,6 +55,12 @@ const expenseSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Description cannot exceed 500 characters'],
       default: ''
+    },
+    studentId: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true
     }
   },
   {
@@ -59,8 +68,8 @@ const expenseSchema = new mongoose.Schema(
   }
 );
 
-// Helpful index for sorting by date and filtering by category
-expenseSchema.index({ date: -1, category: 1 });
+// Helpful compound index for sorting by date and filtering by category & student
+expenseSchema.index({ date: -1, category: 1, studentId: 1 });
 
 // Export the Mongoose model
 const Expense = mongoose.models.Expense || mongoose.model('Expense', expenseSchema);

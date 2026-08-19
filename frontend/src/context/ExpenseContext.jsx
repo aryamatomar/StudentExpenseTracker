@@ -1,29 +1,49 @@
 /**
- * Global Expense Context Provider
+ * Global Expense and Profile Context Provider (INR ₹ Default)
  *
- * Centralizes state management for expenses, dashboard analytics,
- * active filters, CRUD operations, modals, and toast notifications.
+ * Centralizes state management for:
+ * - Student Profile (MongoDB backed)
+ * - Expenses collection & CRUD operations
+ * - Dashboard analytics & KPIs (Total, Month, Today, Category, Trends in INR ₹)
+ * - Search, Filters, and Sorting
+ * - Modals (Expense Form, Delete Confirmation, Student Profile, Settings)
+ * - Toast notifications
  */
 
 import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { expenseService } from '../services/api';
+import { expenseService, profileService } from '../services/api';
+import { formatCurrency } from '../utils/formatters';
 
 export const ExpenseContext = createContext(null);
 
 export const ExpenseProvider = ({ children }) => {
-  // Main Data States
+  // ==========================================
+  // PROFILE STATE
+  // ==========================================
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Student Monthly Budget & Currency Preference (linked to profile)
+  const [monthlyBudget, setMonthlyBudget] = useState(15000);
+  const [currency, setCurrency] = useState('INR');
+
+  // ==========================================
+  // EXPENSES & STATS STATE
+  // ==========================================
   const [expenses, setExpenses] = useState([]);
   const [stats, setStats] = useState({
     totalExpenses: 0,
     totalCount: 0,
     thisMonthSpending: 0,
+    todaySpending: 0,
     highestExpense: null,
     averageExpense: 0,
     categoryBreakdown: [],
     monthlyTrends: []
   });
 
-  // UI / Async States
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,12 +65,6 @@ export const ExpenseProvider = ({ children }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingExpense, setDeletingExpense] = useState(null);
 
-  // Student Monthly Budget Goal State (Saved in localStorage for user convenience)
-  const [monthlyBudget, setMonthlyBudget] = useState(() => {
-    const saved = localStorage.getItem('student_monthly_budget');
-    return saved ? Number(saved) : 500;
-  });
-
   // Toast Notification Queue
   const [toasts, setToasts] = useState([]);
 
@@ -58,30 +72,118 @@ export const ExpenseProvider = ({ children }) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
     setToasts((prev) => [...prev, { id, message, type }]);
 
-    // Auto dismiss after 3.5 seconds
     setTimeout(() => {
       removeToast(id);
-    }, 3500);
+    }, 3800);
   }, []);
 
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const updateMonthlyBudget = (newLimit) => {
-    const val = Math.max(0, Number(newLimit) || 0);
-    setMonthlyBudget(val);
-    localStorage.setItem('student_monthly_budget', val.toString());
-    addToast(`Monthly budget set to $${val.toFixed(2)}`, 'info');
+  // ==========================================
+  // PROFILE FETCH & MUTATIONS
+  // ==========================================
+  const fetchProfile = useCallback(async () => {
+    try {
+      setProfileLoading(true);
+      const res = await profileService.get();
+      if (res.success && res.data) {
+        setProfile(res.data);
+        if (res.data.monthlyBudget !== undefined) {
+          setMonthlyBudget(res.data.monthlyBudget);
+        }
+        if (res.data.currency) {
+          setCurrency(res.data.currency);
+        }
+      } else {
+        setProfile(null);
+      }
+    } catch (err) {
+      console.warn('Could not fetch profile from server:', err);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  const createProfile = async (profileData) => {
+    try {
+      const res = await profileService.create(profileData);
+      if (res.success && res.data) {
+        setProfile(res.data);
+        if (res.data.monthlyBudget !== undefined) {
+          setMonthlyBudget(res.data.monthlyBudget);
+        }
+        if (res.data.currency) {
+          setCurrency(res.data.currency);
+        }
+        addToast(`Profile created! Your Student ID is ${res.data.studentId} 🎓`, 'success');
+        return { success: true, data: res.data };
+      }
+    } catch (err) {
+      const msg = err.message || 'Failed to create student profile';
+      addToast(msg, 'error');
+      return { success: false, error: err };
+    }
   };
 
-  /**
-   * Fetch Dashboard Stats
-   */
+  const updateProfile = async (studentId, profileData) => {
+    try {
+      const res = await profileService.update(studentId, profileData);
+      if (res.success && res.data) {
+        setProfile(res.data);
+        if (res.data.monthlyBudget !== undefined) {
+          setMonthlyBudget(res.data.monthlyBudget);
+        }
+        if (res.data.currency) {
+          setCurrency(res.data.currency);
+        }
+        addToast('Student profile updated successfully! ✨', 'success');
+        return { success: true, data: res.data };
+      }
+    } catch (err) {
+      const msg = err.message || 'Failed to update student profile';
+      addToast(msg, 'error');
+      return { success: false, error: err };
+    }
+  };
+
+  const updateMonthlyBudget = async (newLimit) => {
+    const val = Math.max(0, Number(newLimit) || 0);
+    setMonthlyBudget(val);
+
+    if (profile && profile.studentId) {
+      try {
+        await profileService.update(profile.studentId, { monthlyBudget: val });
+        setProfile((prev) => (prev ? { ...prev, monthlyBudget: val } : prev));
+      } catch (err) {
+        console.error('Failed to sync budget to profile:', err);
+      }
+    }
+    addToast(`Monthly budget set to ${formatCurrency(val, currency)}`, 'info');
+  };
+
+  const updateCurrency = async (newCurrency) => {
+    setCurrency(newCurrency);
+    if (profile && profile.studentId) {
+      try {
+        await profileService.update(profile.studentId, { currency: newCurrency });
+        setProfile((prev) => (prev ? { ...prev, currency: newCurrency } : prev));
+      } catch (err) {
+        console.error('Failed to sync currency to profile:', err);
+      }
+    }
+    addToast(`Currency updated to ${newCurrency}`, 'info');
+  };
+
+  // ==========================================
+  // EXPENSES FETCH & MUTATIONS
+  // ==========================================
   const fetchStats = useCallback(async () => {
     try {
       setStatsLoading(true);
-      const res = await expenseService.getStats();
+      const studentId = profile?.studentId;
+      const res = await expenseService.getStats(studentId);
       if (res.success && res.data) {
         setStats(res.data);
       }
@@ -90,22 +192,22 @@ export const ExpenseProvider = ({ children }) => {
     } finally {
       setStatsLoading(false);
     }
-  }, []);
+  }, [profile?.studentId]);
 
-  /**
-   * Fetch Expenses with Current Filters
-   */
   const fetchExpenses = useCallback(async (customParams = {}) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Build query params
       const params = {
         sortBy: filters.sortBy,
         order: filters.order,
         ...customParams
       };
+
+      if (profile?.studentId) {
+        params.studentId = profile.studentId;
+      }
 
       if (filters.search.trim()) {
         params.search = filters.search.trim();
@@ -134,28 +236,31 @@ export const ExpenseProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [filters, addToast]);
+  }, [filters, profile?.studentId, addToast]);
 
-  // Initial fetch on mount & whenever filters change
+  // Initial loads
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  // Fetch stats on initial mount
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
-  /**
-   * Handle Adding a New Expense
-   */
   const addExpense = async (expenseData) => {
     try {
-      const res = await expenseService.create(expenseData);
+      const payload = {
+        ...expenseData,
+        studentId: profile?.studentId || null
+      };
+      const res = await expenseService.create(payload);
       if (res.success) {
-        // Refresh both list and dashboard stats
         await Promise.all([fetchExpenses(), fetchStats()]);
-        addToast('Expense added successfully! 🎉', 'success');
+        addToast('Expense recorded successfully! 🎉', 'success');
         setIsFormModalOpen(false);
         return { success: true, data: res.data };
       }
@@ -166,12 +271,13 @@ export const ExpenseProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Handle Updating an Existing Expense
-   */
   const updateExpense = async (id, expenseData) => {
     try {
-      const res = await expenseService.update(id, expenseData);
+      const payload = {
+        ...expenseData,
+        studentId: profile?.studentId || null
+      };
+      const res = await expenseService.update(id, payload);
       if (res.success) {
         await Promise.all([fetchExpenses(), fetchStats()]);
         addToast('Expense updated successfully! ✨', 'success');
@@ -186,9 +292,6 @@ export const ExpenseProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Handle Deleting an Expense
-   */
   const deleteExpense = async (id) => {
     try {
       const res = await expenseService.delete(id);
@@ -206,9 +309,7 @@ export const ExpenseProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Quick open modal helpers
-   */
+  // Helper Modal Openers
   const openAddModal = () => {
     setEditingExpense(null);
     setIsFormModalOpen(true);
@@ -222,6 +323,14 @@ export const ExpenseProvider = ({ children }) => {
   const openDeleteModal = (expense) => {
     setDeletingExpense(expense);
     setIsDeleteModalOpen(true);
+  };
+
+  const openProfileModal = () => {
+    setIsProfileModalOpen(true);
+  };
+
+  const openSettingsModal = () => {
+    setIsSettingsModalOpen(true);
   };
 
   const resetFilters = () => {
@@ -238,6 +347,21 @@ export const ExpenseProvider = ({ children }) => {
 
   const value = useMemo(
     () => ({
+      profile,
+      profileLoading,
+      fetchProfile,
+      createProfile,
+      updateProfile,
+      isProfileModalOpen,
+      setIsProfileModalOpen,
+      openProfileModal,
+      isSettingsModalOpen,
+      setIsSettingsModalOpen,
+      openSettingsModal,
+      monthlyBudget,
+      updateMonthlyBudget,
+      currency,
+      updateCurrency,
       expenses,
       stats,
       loading,
@@ -262,13 +386,18 @@ export const ExpenseProvider = ({ children }) => {
       openAddModal,
       openEditModal,
       openDeleteModal,
-      monthlyBudget,
-      updateMonthlyBudget,
       toasts,
       addToast,
       removeToast
     }),
     [
+      profile,
+      profileLoading,
+      fetchProfile,
+      isProfileModalOpen,
+      isSettingsModalOpen,
+      monthlyBudget,
+      currency,
       expenses,
       stats,
       loading,
@@ -281,7 +410,6 @@ export const ExpenseProvider = ({ children }) => {
       editingExpense,
       isDeleteModalOpen,
       deletingExpense,
-      monthlyBudget,
       toasts,
       addToast,
       removeToast
@@ -290,3 +418,5 @@ export const ExpenseProvider = ({ children }) => {
 
   return <ExpenseContext.Provider value={value}>{children}</ExpenseContext.Provider>;
 };
+
+export default ExpenseProvider;

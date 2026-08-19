@@ -10,7 +10,8 @@ export const DeleteConfirmModal = () => {
     setIsDeleteModalOpen,
     deletingExpense,
     setDeletingExpense,
-    deleteExpense
+    deleteExpense,
+    currency
   } = useExpenses();
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -56,7 +57,7 @@ export const DeleteConfirmModal = () => {
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-sm font-bold text-slate-800">{deletingExpense.title}</h4>
             <span className="text-sm font-extrabold text-slate-900 shrink-0">
-              {formatCurrency(deletingExpense.amount)}
+              {formatCurrency(deletingExpense.amount, currency)}
             </span>
           </div>
           <div className="flex items-center gap-2">

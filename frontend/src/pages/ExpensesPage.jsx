@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Download, LayoutGrid, List, Receipt } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List, Receipt, FileJson, FileSpreadsheet } from 'lucide-react';
 import { useExpenses } from '../hooks/useExpenses';
 import ExpenseFilters from '../components/expenses/ExpenseFilters';
 import ExpenseTable from '../components/expenses/ExpenseTable';
@@ -8,7 +8,17 @@ import EmptyState from '../components/ui/EmptyState';
 import { TableRowSkeleton } from '../components/ui/LoadingSkeleton';
 
 export const ExpensesPage = () => {
-  const { expenses, loading, openAddModal, filters, resetFilters, addToast } = useExpenses();
+  const {
+    expenses,
+    loading,
+    openAddModal,
+    filters,
+    resetFilters,
+    addToast,
+    profile,
+    currency
+  } = useExpenses();
+
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
 
   // Helper to export expenses to CSV
@@ -18,13 +28,15 @@ export const ExpensesPage = () => {
       return;
     }
 
-    const headers = ['Title', 'Amount', 'Category', 'Date', 'Description'];
+    const headers = ['Title', 'Amount', 'Currency', 'Category', 'Date', 'Description', 'Student ID'];
     const rows = expenses.map((exp) => [
       `"${(exp.title || '').replace(/"/g, '""')}"`,
       exp.amount,
+      currency,
       exp.category,
       exp.date,
-      `"${(exp.description || '').replace(/"/g, '""')}"`
+      `"${(exp.description || '').replace(/"/g, '""')}"`,
+      `"${exp.studentId || profile?.studentId || ''}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -53,11 +65,11 @@ export const ExpensesPage = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <span>Expenses Management</span>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
-              {expenses.length}
+              {expenses.length} {expenses.length === 1 ? 'entry' : 'entries'}
             </span>
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Search, filter, edit, and organize all your college expenditures
+            Search, filter, categorize, and organize your college transactions
           </p>
         </div>
 

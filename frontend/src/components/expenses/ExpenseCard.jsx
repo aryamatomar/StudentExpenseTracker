@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useExpenses } from '../../hooks/useExpenses';
 
 export const ExpenseCard = ({ expense }) => {
-  const { openEditModal, openDeleteModal } = useExpenses();
+  const { openEditModal, openDeleteModal, currency } = useExpenses();
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-soft card-hover flex flex-col justify-between gap-3">
@@ -13,7 +13,7 @@ export const ExpenseCard = ({ expense }) => {
       <div className="flex items-start justify-between gap-2">
         <CategoryBadge category={expense.category} size="sm" />
         <span className="text-lg font-extrabold text-slate-900 leading-none">
-          {formatCurrency(expense.amount)}
+          {formatCurrency(expense.amount, currency)}
         </span>
       </div>
 
@@ -23,7 +23,7 @@ export const ExpenseCard = ({ expense }) => {
         {expense.description ? (
           <p className="text-xs text-slate-500 line-clamp-2 mt-1 leading-relaxed">{expense.description}</p>
         ) : (
-          <p className="text-xs text-slate-300 italic mt-1">No additional note</p>
+          <p className="text-xs text-slate-300 italic mt-1">No additional notes</p>
         )}
       </div>
 

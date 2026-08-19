@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useExpenses } from '../../hooks/useExpenses';
 
 export const ExpenseTable = ({ expenses = [] }) => {
-  const { openEditModal, openDeleteModal } = useExpenses();
+  const { openEditModal, openDeleteModal, currency } = useExpenses();
 
   const totalFilteredAmount = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
@@ -15,7 +15,7 @@ export const ExpenseTable = ({ expenses = [] }) => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-              <th className="py-4 px-6">Expense Title & Description</th>
+              <th className="py-4 px-6">Expense Title & Notes</th>
               <th className="py-4 px-6">Category</th>
               <th className="py-4 px-6">Date</th>
               <th className="py-4 px-6 text-right">Amount</th>
@@ -39,7 +39,7 @@ export const ExpenseTable = ({ expenses = [] }) => {
                         {expense.description}
                       </p>
                     ) : (
-                      <p className="text-xs text-slate-300 italic mt-0.5">No description added</p>
+                      <p className="text-xs text-slate-300 italic mt-0.5">No notes added</p>
                     )}
                   </div>
                 </td>
@@ -60,7 +60,7 @@ export const ExpenseTable = ({ expenses = [] }) => {
                 {/* Amount */}
                 <td className="py-4 px-6 text-right whitespace-nowrap">
                   <span className="font-extrabold text-slate-900 text-base">
-                    {formatCurrency(expense.amount)}
+                    {formatCurrency(expense.amount, currency)}
                   </span>
                 </td>
 
@@ -96,7 +96,7 @@ export const ExpenseTable = ({ expenses = [] }) => {
         <span>Showing {expenses.length} {expenses.length === 1 ? 'transaction' : 'transactions'}</span>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-slate-700">Filtered Total:</span>
-          <span className="font-extrabold text-slate-900 text-sm">{formatCurrency(totalFilteredAmount)}</span>
+          <span className="font-extrabold text-slate-900 text-sm">{formatCurrency(totalFilteredAmount, currency)}</span>
         </div>
       </div>
     </div>
